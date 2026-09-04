@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --azul: #005DA1;
+      --celeste: #ABE1F5;
+      --gris: #f4f6f8;
+      --texto: #1f2933;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      background: var(--gris);
+      color: var(--texto);
+    }
+    header {
+      background: var(--azul);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+    header .cliente-info { font-size: 13px; opacity: 0.9; }
+    main { padding: 24px; max-width: 1000px; margin: 0 auto; }
+    .oculto { display: none !important; }
+
+    /* Login */
+    #vista-login {
+      max-width: 360px;
+      margin: 80px auto;
+      background: white;
+      padding: 32px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    #vista-login h2 { color: var(--azul); margin-top: 0; }
+    #vista-login input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    #vista-login button, .btn {
+      background: var(--azul);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    #vista-login button:hover, .btn:hover { opacity: 0.9; }
+    #login-error { color: #c62828; font-size: 13px; margin-top: 8px; min-height: 16px; }
+
+    /* Lista de equipos */
+    .equipo-card {
+      background: white;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      border-left: 5px solid var(--celeste);
+    }
+    .equipo-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .equipo-card .nivel-1 { border-left-color: #c62828; }
+    .equipo-card .nivel-2 { border-left-color: #ef6c00; }
+    .equipo-card h3 { margin: 0 0 4px 0; font-size: 15px; color: var(--azul); }
+    .equipo-card p { margin: 0; font-size: 13px; color: #555; }
+    .badge {
+      background: var(--celeste);
+      color: var(--azul);
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    /* Detalle */
+    #vista-detalle .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .ficha { background: white; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .ficha dl { display: grid; grid-template-columns: 160px 1fr; gap: 6px 12px; margin: 0; }
+    .ficha dt { color: #666; font-size: 13px; }
+    .ficha dd { margin: 0; font-size: 13px; font-weight: 600; }
+
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+    th, td { padding: 10px 12px; font-size: 13px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: var(--azul); color: white; font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+
+    .volver { background: none; color: var(--azul); border: none; cursor: pointer; font-size: 13px; padding: 0; margin-bottom: 12px; }
+
+    @media print {
+      header, .volver, .btn, #vista-lista { display: none !important; }
+      body { background: white; }
+      .ficha, table { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Portal de Servicio — Ingenieros Asociados</h1>
+    <div class="cliente-info oculto" id="header-cliente"></div>
+  </header>
+
+  <main>
+    <!-- LOGIN -->
+    <div id="vista-login">
+      <h2>Acceso al Portal</h2>
+      <p style="font-size:13px;color:#666;">Ingresa el PIN que te proporcionó Ingenieros Asociados.</p>
+      <input type="password" id="input-pin" maxlength="12" placeholder="PIN">
+      <button onclick="intentarLogin()">Entrar</button>
+      <div id="login-error"></div>
+    </div>
+
+    <!-- LISTA DE EQUIPOS -->
+    <div id="vista-lista" class="oculto">
+      <h2>Tus equipos con historial de mantenimiento</h2>
+      <div id="lista-equipos"></div>
+      <p id="lista-vacia" class="oculto" style="color:#666;">Todavía no hay equipos con órdenes de servicio registradas.</p>
+    </div>
+
+    <!-- DETALLE DE EQUIPO -->
+    <div id="vista-detalle" class="oculto">
+      <button class="volver" onclick="volverALista()">&larr; Volver a mis equipos</button>
+      <div class="top-bar">
+        <h2 id="detalle-titulo"></h2>
+        <button class="btn" onclick="window.print()">Imprimir / Generar reporte (PDF)</button>
+      </div>
+      <div class="ficha">
+        <dl id="detalle-ficha"></dl>
+      </div>
+      <h3>Historial de órdenes de servicio</h3>
+      <table>
+        <thead>
+          <tr><th>Fecha</th><th>Tipo de anomalía</th><th>Descripción</th><th>Impacto</th><th>Reportó</th></tr>
+        </thead>
+        <tbody id="detalle-ordenes"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    let sesionToken = null;
+    let sesionCliente = null;
+
+    function intentarLogin() {
+      const pin = document.getElementById('input-pin').value.trim();
+      const err = document.getElementById('login-error');
+      err.textContent = '';
+      if (!pin) { err.textContent = 'Ingresa tu PIN.'; return; }
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          if (!res.ok) { err.textContent = res.mensaje; return; }
+          sesionToken = res.token;
+          sesionCliente = res.cliente;
+          document.getElementById('vista-login').classList.add('oculto');
+          document.getElementById('header-cliente').classList.remove('oculto');
+          document.getElementById('header-cliente').textContent = res.cliente;
+          cargarEquipos();
+        })
+        .withFailureHandler(function (e) { err.textContent = 'Error: ' + e.message; })
+        .login(pin);
+    }
+
+    function cargarEquipos() {
+      document.getElementById('vista-lista').classList.remove('oculto');
+      document.getElementById('vista-detalle').classList.add('oculto');
+      google.script.run
+        .withSuccessHandler(renderEquipos)
+        .withFailureHandler(function (e) { alert('Error: ' + e.message); })
+        .getEquiposCliente(sesionToken);
+    }
+
+    function renderEquipos(equipos) {
+      const cont = document.getElementById('lista-equipos');
+      const vacio = document.getElementById('lista-vacia');
+      cont.innerHTML = '';
+      if (!equipos.length) { vacio.classList.remove('oculto'); return; }
+      vacio.classList.add('oculto');
+      equipos.forEach(function (eq) {
+        const div = document.createElement('div');
+        div.className = 'equipo-card nivel-' + eq.nivelCriticidad;
+        div.onclick = function () { verDetalle(eq.idActivo); };
+        div.innerHTML =
+          '<div><h3>' + eq.nombreEquipo + ' — ' + eq.idActivo + '</h3>' +
+          '<p>' + eq.marca + ' ' + eq.modelo + ' · ' + eq.sede + ' / ' + eq.departamento + '</p></div>' +
+          '<span class="badge">' + eq.estatusOperativo + '</span>';
+        cont.appendChild(div);
+      });
+    }
+
+    function verDetalle(idActivo) {
+      google.script.run
+        .withSuccessHandler(renderDetalle)
+        .withFailureHandler(function (e) { alert('Error: ' + e.message); })
+        .getHistorialEquipo(sesionToken, idActivo);
+    }
+
+    function renderDetalle(data) {
+      document.getElementById('vista-lista').classList.add('oculto');
+      document.getElementById('vista-detalle').classList.remove('oculto');
+      document.getElementById('detalle-titulo').textContent = data.equipo.nombreEquipo + ' — ' + data.equipo.idActivo;
+
+      document.getElementById('detalle-ficha').innerHTML =
+        '<dt>Marca / Modelo</dt><dd>' + data.equipo.marca + ' / ' + data.equipo.modelo + '</dd>' +
+        '<dt>Número de serie</dt><dd>' + (data.equipo.numeroSerie || '-') + '</dd>' +
+        '<dt>Sede</dt><dd>' + data.equipo.sede + '</dd>' +
+        '<dt>Departamento</dt><dd>' + data.equipo.departamento + '</dd>' +
+        '<dt>Nivel de criticidad</dt><dd>' + data.equipo.nivelCriticidad + '</dd>' +
+        '<dt>Estatus operativo</dt><dd>' + data.equipo.estatusOperativo + '</dd>';
+
+      const tbody = document.getElementById('detalle-ordenes');
+      tbody.innerHTML = '';
+      data.ordenes.forEach(function (o) {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + (o.fecha ? new Date(o.fecha).toLocaleString() : '-') + '</td>' +
+          '<td>' + (o.tipoAnomalia || '-') + '</td>' +
+          '<td>' + (o.descripcion || '-') + '</td>' +
+          '<td>' + (o.impactoOperativo || '-') + '</td>' +
+          '<td>' + (o.solicitante || '-') + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    function volverALista() { cargarEquipos(); }
+
+    document.getElementById('input-pin').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') intentarLogin();
+    });
+  </script>
+</body>
+</html>
