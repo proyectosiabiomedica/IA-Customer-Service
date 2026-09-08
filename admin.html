@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administración | Portal de Servicio — Ingenieros Asociados</title>
+  <style>
+    :root {
+      --azul: #005DA1;
+      --celeste: #ABE1F5;
+      --gris: #f4f6f8;
+      --texto: #1f2933;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: var(--gris); color: var(--texto); }
+    header { background: var(--azul); color: white; padding: 16px 24px; }
+    header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+    main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    .oculto { display: none !important; }
+
+    #vista-login {
+      max-width: 360px; margin: 80px auto; background: white; padding: 32px;
+      border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center;
+    }
+    #vista-login h2 { color: var(--azul); margin-top: 0; }
+    input, select, textarea {
+      width: 100%; padding: 8px 10px; font-size: 14px; border: 1px solid #ccc;
+      border-radius: 6px; margin-bottom: 10px; font-family: inherit;
+    }
+    button, .btn {
+      background: var(--azul); color: white; border: none; padding: 9px 16px;
+      border-radius: 6px; font-size: 14px; cursor: pointer;
+    }
+    button:hover, .btn:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.6; cursor: default; }
+    .btn-secundario { background: #eee; color: var(--texto); }
+    #login-error { color: #c62828; font-size: 13px; margin-top: 8px; min-height: 16px; }
+
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #ddd; }
+    .tab { padding: 10px 16px; cursor: pointer; font-size: 14px; color: #666; border-bottom: 3px solid transparent; }
+    .tab.activo { color: var(--azul); font-weight: 600; border-bottom-color: var(--azul); }
+
+    .panel { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .panel h2 { margin-top: 0; font-size: 16px; color: var(--azul); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 10px; font-size: 13px; text-align: left; border-bottom: 1px solid #eee; white-space: nowrap; }
+    th { background: var(--azul); color: white; position: sticky; top: 0; }
+    .tabla-scroll { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+
+    .form-cliente { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    .form-cliente .full { grid-column: 1 / -1; }
+    .badge-activo { background: #e6f4ea; color: #1e7d34; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+    .badge-inactivo { background: #fce8e6; color: #c5221f; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+
+    .buscador { margin-bottom: 12px; }
+    .cargando { text-align: center; color: #666; padding: 30px; }
+  </style>
+</head>
+<body>
+
+  <header><h1>Administración — Portal de Servicio (Ingenieros Asociados)</h1></header>
+
+  <main>
+    <div id="vista-login">
+      <h2>Acceso de administrador</h2>
+      <input type="password" id="input-password" placeholder="Contraseña">
+      <button id="btn-login" onclick="intentarLogin()" style="width:100%">Entrar</button>
+      <div id="login-error"></div>
+    </div>
+
+    <div id="vista-admin" class="oculto">
+      <div class="tabs">
+        <div class="tab activo" id="tab-clientes" onclick="mostrarTab('clientes')">Clientes y PINs</div>
+        <div class="tab" id="tab-basemaestra" onclick="mostrarTab('basemaestra')">Base de datos completa</div>
+      </div>
+
+      <!-- CLIENTES -->
+      <div id="seccion-clientes">
+        <div class="panel">
+          <h2 id="titulo-form-cliente">Nuevo cliente</h2>
+          <div class="form-cliente">
+            <div><label>Cliente</label><input id="f-cliente" placeholder="Nombre del cliente/hospital"></div>
+            <div><label>PIN</label><input id="f-pin" placeholder="Ej. 1234"></div>
+            <div class="full"><label>Sedes (separadas por coma, deben coincidir EXACTO con la columna UNIDAD: de Orden de Trabajo)</label><textarea id="f-sedes" rows="2"></textarea></div>
+            <div><label>Activo</label>
+              <select id="f-activo"><option value="SI">Sí</option><option value="NO">No</option></select>
+            </div>
+          </div>
+          <button onclick="guardarCliente()" id="btn-guardar">Guardar</button>
+          <button class="btn-secundario" onclick="limpiarFormCliente()">Cancelar edición</button>
+          <div id="cliente-msg" style="margin-top:8px;font-size:13px;"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Clientes registrados</h2>
+          <div class="tabla-scroll">
+            <table>
+              <thead><tr><th>Cliente</th><th>PIN</th><th>Sedes</th><th>Activo</th><th></th></tr></thead>
+              <tbody id="tabla-clientes"><tr><td colspan="5" class="cargando">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- BASE MAESTRA -->
+      <div id="seccion-basemaestra" class="oculto">
+        <div class="panel">
+          <h2>Base de Datos Maestra — todos los equipos</h2>
+          <input class="buscador" id="buscador-equipos" placeholder="Buscar por ID, nombre, marca, sede..." oninput="filtrarEquipos()">
+          <div class="tabla-scroll">
+            <table>
+              <thead>
+                <tr><th>ID_Activo</th><th>Equipo</th><th>Marca</th><th>Modelo</th><th>Sede</th><th>Departamento</th><th>Estatus</th></tr>
+              </thead>
+              <tbody id="tabla-basemaestra"><tr><td colspan="7" class="cargando">Cargando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // ⚠️ Debe ser la MISMA URL que pegaste en index.html (termina en /exec).
+    const APPS_SCRIPT_URL = 'PEGA_AQUI_LA_URL_DEL_DEPLOYMENT/exec';
+
+    let adminToken = null;
+    let equiposCache = [];
+    let clienteEditandoId = null;
+
+    let jsonpContador = 0;
+    function jsonpRequest(params) {
+      return new Promise(function (resolve, reject) {
+        const cbName = 'jsonp_cb_' + (jsonpContador++);
+        const qs = Object.keys(params)
+          .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]); })
+          .join('&');
+        const script = document.createElement('script');
+        window[cbName] = function (respuesta) { resolve(respuesta); delete window[cbName]; script.remove(); };
+        script.onerror = function () { reject(new Error('No se pudo contactar al servidor.')); delete window[cbName]; script.remove(); };
+        script.src = APPS_SCRIPT_URL + '?' + qs + '&callback=' + cbName;
+        document.body.appendChild(script);
+      });
+    }
+
+    function intentarLogin() {
+      const password = document.getElementById('input-password').value;
+      const err = document.getElementById('login-error');
+      const btn = document.getElementById('btn-login');
+      err.textContent = '';
+      if (!password) { err.textContent = 'Ingresa la contraseña.'; return; }
+      btn.disabled = true; btn.textContent = 'Entrando...';
+
+      jsonpRequest({ action: 'adminLogin', password: password })
+        .then(function (res) {
+          btn.disabled = false; btn.textContent = 'Entrar';
+          if (!res.ok) { err.textContent = res.mensaje; return; }
+          adminToken = res.data.adminToken;
+          document.getElementById('vista-login').classList.add('oculto');
+          document.getElementById('vista-admin').classList.remove('oculto');
+          cargarClientes();
+        })
+        .catch(function (e) { btn.disabled = false; btn.textContent = 'Entrar'; err.textContent = 'Error: ' + e.message; });
+    }
+
+    function mostrarTab(nombre) {
+      document.getElementById('tab-clientes').classList.toggle('activo', nombre === 'clientes');
+      document.getElementById('tab-basemaestra').classList.toggle('activo', nombre === 'basemaestra');
+      document.getElementById('seccion-clientes').classList.toggle('oculto', nombre !== 'clientes');
+      document.getElementById('seccion-basemaestra').classList.toggle('oculto', nombre !== 'basemaestra');
+      if (nombre === 'basemaestra' && equiposCache.length === 0) cargarBaseMaestra();
+    }
+
+    function cargarClientes() {
+      jsonpRequest({ action: 'adminListClientes', adminToken: adminToken })
+        .then(function (res) {
+          if (!res.ok) { alert('Error: ' + res.mensaje); return; }
+          renderClientes(res.data);
+        })
+        .catch(function (e) { alert('Error: ' + e.message); });
+    }
+
+    function renderClientes(clientes) {
+      const tbody = document.getElementById('tabla-clientes');
+      tbody.innerHTML = '';
+      if (!clientes.length) { tbody.innerHTML = '<tr><td colspan="5">Sin clientes todavía.</td></tr>'; return; }
+      clientes.forEach(function (c) {
+        const tr = document.createElement('tr');
+        const activoOk = String(c.activo || '').trim().toUpperCase().indexOf('SI') === 0 ||
+                          String(c.activo || '').trim().toUpperCase().indexOf('SÍ') === 0;
+        tr.innerHTML =
+          '<td>' + (c.cliente || '') + '</td>' +
+          '<td>' + (c.pin || '') + '</td>' +
+          '<td>' + (c.sedes || '') + '</td>' +
+          '<td><span class="' + (activoOk ? 'badge-activo' : 'badge-inactivo') + '">' + (c.activo || '') + '</span></td>' +
+          '<td><button class="btn-secundario" data-id="' + c.id + '">Editar</button></td>';
+        tr.querySelector('button').onclick = function () { editarCliente(c); };
+        tbody.appendChild(tr);
+      });
+    }
+
+    function editarCliente(c) {
+      clienteEditandoId = c.id;
+      document.getElementById('titulo-form-cliente').textContent = 'Editando: ' + c.cliente;
+      document.getElementById('f-cliente').value = c.cliente || '';
+      document.getElementById('f-pin').value = c.pin || '';
+      document.getElementById('f-sedes').value = c.sedes || '';
+      document.getElementById('f-activo').value = String(c.activo || '').trim().toUpperCase().indexOf('SI') === 0 ? 'SI' : 'NO';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function limpiarFormCliente() {
+      clienteEditandoId = null;
+      document.getElementById('titulo-form-cliente').textContent = 'Nuevo cliente';
+      document.getElementById('f-cliente').value = '';
+      document.getElementById('f-pin').value = '';
+      document.getElementById('f-sedes').value = '';
+      document.getElementById('f-activo').value = 'SI';
+      document.getElementById('cliente-msg').textContent = '';
+    }
+
+    function guardarCliente() {
+      const cliente = document.getElementById('f-cliente').value.trim();
+      const pin = document.getElementById('f-pin').value.trim();
+      const sedes = document.getElementById('f-sedes').value.trim();
+      const activo = document.getElementById('f-activo').value;
+      const msg = document.getElementById('cliente-msg');
+      const btn = document.getElementById('btn-guardar');
+
+      if (!cliente || !pin) { msg.style.color = '#c62828'; msg.textContent = 'Cliente y PIN son obligatorios.'; return; }
+
+      btn.disabled = true; btn.textContent = 'Guardando...';
+      jsonpRequest({
+        action: 'adminGuardarCliente', adminToken: adminToken,
+        id: clienteEditandoId || '', cliente: cliente, pin: pin, sedes: sedes, activo: activo
+      }).then(function (res) {
+        btn.disabled = false; btn.textContent = 'Guardar';
+        if (!res.ok) { msg.style.color = '#c62828'; msg.textContent = res.mensaje; return; }
+        msg.style.color = '#1e7d34';
+        msg.textContent = res.data.actualizado ? 'Cliente actualizado.' : 'Cliente creado.';
+        limpiarFormCliente();
+        cargarClientes();
+      }).catch(function (e) {
+        btn.disabled = false; btn.textContent = 'Guardar';
+        msg.style.color = '#c62828'; msg.textContent = 'Error: ' + e.message;
+      });
+    }
+
+    function cargarBaseMaestra() {
+      jsonpRequest({ action: 'adminListBaseMaestra', adminToken: adminToken })
+        .then(function (res) {
+          if (!res.ok) { alert('Error: ' + res.mensaje); return; }
+          equiposCache = res.data;
+          renderBaseMaestra(equiposCache);
+        })
+        .catch(function (e) { alert('Error: ' + e.message); });
+    }
+
+    function renderBaseMaestra(equipos) {
+      const tbody = document.getElementById('tabla-basemaestra');
+      tbody.innerHTML = '';
+      if (!equipos.length) { tbody.innerHTML = '<tr><td colspan="7">Sin equipos todavía.</td></tr>'; return; }
+      equipos.forEach(function (eq) {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + (eq['ID_Activo'] || '') + '</td>' +
+          '<td>' + (eq['Nombre_Equipo'] || '') + '</td>' +
+          '<td>' + (eq['Marca'] || '') + '</td>' +
+          '<td>' + (eq['Modelo'] || '') + '</td>' +
+          '<td>' + (eq['Sede'] || '') + '</td>' +
+          '<td>' + (eq['Departamento'] || '') + '</td>' +
+          '<td>' + (eq['Estatus_Operativo'] || '') + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filtrarEquipos() {
+      const q = document.getElementById('buscador-equipos').value.trim().toLowerCase();
+      if (!q) { renderBaseMaestra(equiposCache); return; }
+      const filtrados = equiposCache.filter(function (eq) {
+        return Object.values(eq).some(function (v) { return String(v || '').toLowerCase().indexOf(q) !== -1; });
+      });
+      renderBaseMaestra(filtrados);
+    }
+
+    document.getElementById('input-password').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') intentarLogin();
+    });
+  </script>
+</body>
+</html>
